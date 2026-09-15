@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import LogoutButton from '@/components/logout-button'
 
 const navigation = [
   {
@@ -61,6 +62,8 @@ export default function MainNav() {
               {item.name}
             </Link>
           ))}
+
+          <LogoutButton />
         </div>
 
       </div>
