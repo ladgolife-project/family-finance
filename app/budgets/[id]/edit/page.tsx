@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import DeleteBudgetButton from '@/components/delete-budget-button'
 
 type Category = {
   id: string
@@ -14,11 +15,9 @@ export default function EditBudgetPage() {
   const router = useRouter()
   const params = useParams()
 
-  const budgetId =
-    params.id as string
+  const budgetId = params.id as string
 
-  const supabase =
-    createClient()
+  const supabase = createClient()
 
   const [categories, setCategories] =
     useState<Category[]>([])
@@ -44,13 +43,11 @@ export default function EditBudgetPage() {
 
   useEffect(() => {
     async function loadData() {
-
       setLoading(true)
 
       const {
         data: { user },
-      } =
-        await supabase.auth.getUser()
+      } = await supabase.auth.getUser()
 
       if (!user) {
         router.push('/login')
@@ -71,39 +68,28 @@ export default function EditBudgetPage() {
         return
       }
 
-      const familyId =
-        membership.family_id
+      const familyId = membership.family_id
 
       // BUDGET
 
       const {
         data: budget,
         error: budgetError,
-      } =
-        await supabase
-          .from('budgets')
-          .select(`
-            id,
-            category_id,
-            amount,
-            month,
-            is_active
-          `)
-          .eq('id', budgetId)
-          .eq(
-            'family_id',
-            familyId
-          )
-          .eq(
-            'is_active',
-            true
-          )
-          .single()
+      } = await supabase
+        .from('budgets')
+        .select(`
+          id,
+          category_id,
+          amount,
+          month,
+          is_active
+        `)
+        .eq('id', budgetId)
+        .eq('family_id', familyId)
+        .eq('is_active', true)
+        .single()
 
-      if (
-        budgetError ||
-        !budget
-      ) {
+      if (budgetError || !budget) {
         setError(
           budgetError?.message ??
             'Budget tidak ditemukan.'
@@ -118,38 +104,22 @@ export default function EditBudgetPage() {
       const {
         data: categoryData,
         error: categoryError,
-      } =
-        await supabase
-          .from('categories')
-          .select(
-            'id, name, type'
-          )
-          .eq(
-            'family_id',
-            familyId
-          )
-          .eq(
-            'type',
-            'expense'
-          )
-          .order('name')
+      } = await supabase
+        .from('categories')
+        .select('id, name, type')
+        .eq('family_id', familyId)
+        .eq('type', 'expense')
+        .order('name')
 
       if (categoryError) {
-        setError(
-          categoryError.message
-        )
-
+        setError(categoryError.message)
         setLoading(false)
         return
       }
 
-      setCategories(
-        categoryData ?? []
-      )
+      setCategories(categoryData ?? [])
 
-      setCategoryId(
-        budget.category_id
-      )
+      setCategoryId(budget.category_id)
 
       setAmount(
         String(
@@ -163,11 +133,7 @@ export default function EditBudgetPage() {
     }
 
     loadData()
-  }, [
-    budgetId,
-    router,
-    supabase,
-  ])
+  }, [budgetId, router])
 
   // ============================================================
   // SAVE
@@ -183,8 +149,7 @@ export default function EditBudgetPage() {
 
     const {
       data: { user },
-    } =
-      await supabase.auth.getUser()
+    } = await supabase.auth.getUser()
 
     if (!user) {
       setError(
@@ -213,16 +178,12 @@ export default function EditBudgetPage() {
       return
     }
 
-    const nominal =
-      Number(amount)
+    const nominal = Number(amount)
 
     // VALIDASI
 
     if (!categoryId) {
-      setError(
-        'Pilih kategori.'
-      )
-
+      setError('Pilih kategori.')
       setSaving(false)
       return
     }
@@ -245,45 +206,85 @@ export default function EditBudgetPage() {
 
     const {
       error: updateError,
-    } =
-      await supabase
-        .from('budgets')
-        .update({
-          category_id:
-            categoryId,
-          amount: nominal,
+    } = await supabase
+      .from('budgets')
+      .update({
+        category_id: categoryId,
+        amount: nominal,
 
-          // Tetap recurring
-          month: null,
+        // Tetap recurring
+        month: null,
 
-          is_active: true,
-        })
-        .eq(
-          'id',
-          budgetId
-        )
-        .eq(
-          'family_id',
-          membership.family_id
-        )
+        is_active: true,
+      })
+      .eq('id', budgetId)
+      .eq(
+        'family_id',
+        membership.family_id
+      )
 
     if (updateError) {
-
       if (
-        updateError.code ===
-        '23505'
+        updateError.code === '23505'
       ) {
         setError(
           'Kategori tersebut sudah memiliki budget aktif.'
         )
       } else {
-        setError(
-          updateError.message
-        )
+        setError(updateError.message)
       }
 
       setSaving(false)
       return
+    }
+
+    router.push('/budgets')
+    router.refresh()
+  }
+
+  // ============================================================
+  // DELETE
+  // ============================================================
+
+  async function handleDelete() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      throw new Error(
+        'Sesi login tidak ditemukan.'
+      )
+    }
+
+    const { data: membership } =
+      await supabase
+        .from('family_members')
+        .select('family_id')
+        .eq('user_id', user.id)
+        .single()
+
+    if (!membership?.family_id) {
+      throw new Error(
+        'Data keluarga tidak ditemukan.'
+      )
+    }
+
+    const {
+      error: deleteError,
+    } = await supabase
+      .from('budgets')
+      .delete()
+      .eq('id', budgetId)
+      .eq(
+        'family_id',
+        membership.family_id
+      )
+
+    if (deleteError) {
+      throw new Error(
+        deleteError.message
+      )
     }
 
     router.push('/budgets')
@@ -297,15 +298,11 @@ export default function EditBudgetPage() {
   if (loading) {
     return (
       <main className="min-h-screen bg-gray-50 px-6 py-10">
-
         <div className="mx-auto max-w-xl">
-
           <p className="text-sm text-gray-500">
             Memuat budget...
           </p>
-
         </div>
-
       </main>
     )
   }
@@ -316,7 +313,6 @@ export default function EditBudgetPage() {
 
   return (
     <main className="min-h-screen bg-gray-50 px-6 py-10">
-
       <div className="mx-auto max-w-xl">
 
         <button
@@ -357,7 +353,6 @@ export default function EditBudgetPage() {
               }
               className="w-full rounded-lg border px-4 py-3"
             >
-
               <option value="">
                 Pilih kategori
               </option>
@@ -372,14 +367,12 @@ export default function EditBudgetPage() {
                   </option>
                 )
               )}
-
             </select>
           </div>
 
           {/* NOMINAL */}
 
           <div>
-
             <label className="mb-2 block text-sm font-medium">
               Nominal Budget Bulanan
             </label>
@@ -396,13 +389,11 @@ export default function EditBudgetPage() {
               }
               className="w-full rounded-lg border px-4 py-3"
             />
-
           </div>
 
           {/* INFO */}
 
           <div className="rounded-lg bg-gray-50 px-4 py-3">
-
             <p className="text-sm font-medium text-gray-700">
               Budget recurring
             </p>
@@ -412,7 +403,6 @@ export default function EditBudgetPage() {
               Mengubah nominal akan mengubah batas
               budget bulanan tersebut.
             </p>
-
           </div>
 
           {/* ERROR */}
@@ -423,10 +413,9 @@ export default function EditBudgetPage() {
             </div>
           )}
 
-          {/* BUTTON */}
+          {/* SAVE / CANCEL */}
 
           <div className="flex gap-3 pt-3">
-
             <button
               type="button"
               onClick={() => router.back()}
@@ -444,13 +433,18 @@ export default function EditBudgetPage() {
                 ? 'Menyimpan...'
                 : 'Simpan Perubahan'}
             </button>
+          </div>
 
+          {/* DELETE */}
+
+          <div className="border-t pt-5">
+            <DeleteBudgetButton
+              onDelete={handleDelete}
+            />
           </div>
 
         </form>
-
       </div>
-
     </main>
   )
 }

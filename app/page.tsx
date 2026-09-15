@@ -206,7 +206,38 @@ export default async function Home({
       .limit(3)
 
   // ============================================================
-  // TOTAL SALDO
+  // GOAL CONTRIBUTIONS / DANA CADANGAN
+  // ============================================================
+
+  const { data: goalContributions, error: goalContributionError } =
+    await supabase
+      .from('financial_goal_contributions')
+      .select(`
+        account_id,
+        amount
+      `)
+      .eq('family_id', familyId)
+
+  if (goalContributionError) {
+    console.error(
+      'Gagal mengambil dana goal:',
+      goalContributionError
+    )
+  }
+
+  // Total dana goal per rekening
+  const allocatedByAccount: Record<string, number> = {}
+
+  for (const contribution of goalContributions ?? []) {
+    const accountId = contribution.account_id
+    const amount = Number(contribution.amount ?? 0)
+
+    allocatedByAccount[accountId] =
+      (allocatedByAccount[accountId] ?? 0) + amount
+  }
+
+  // ============================================================
+  // TOTAL SALDO & DANA TERSEDIA
   // ============================================================
 
   const totalSaldo = accounts.reduce(
@@ -214,6 +245,16 @@ export default async function Home({
       total + Number(account.balance ?? 0),
     0
   )
+
+  const totalDanaGoal = accounts.reduce(
+    (total, account) =>
+      total +
+      (allocatedByAccount[account.account_id] ?? 0),
+    0
+  )
+
+  const totalSaldoTersedia =
+    totalSaldo - totalDanaGoal
 
   // ============================================================
   // TRANSACTIONS BULAN TERPILIH
@@ -392,7 +433,7 @@ export default async function Home({
       (budget) => budget.category_id
     )
   )
-  
+
   const pengeluaranBudgetBulanIni =
     monthlyTransactions
       ?.filter(
@@ -438,7 +479,7 @@ export default async function Home({
               Array.from(budgetCategoryIds)
             )
         ).data ?? []
-      : []    
+      : []
 
   const budgetVsActual =
     (budgets ?? [])
@@ -881,17 +922,57 @@ export default async function Home({
         {/* ================================================== */}
 
         <section className="rounded-2xl bg-black p-6 text-white shadow-sm">
-          <p className="text-sm text-gray-400">
-            Total Saldo
-          </p>
+          <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
 
-          <p className="mt-2 text-4xl font-bold">
-            {formatRupiah(totalSaldo)}
-          </p>
+            {/* TOTAL SALDO */}
+            <div>
+              <p className="text-sm text-gray-400">
+                Total Saldo
+              </p>
 
-          <p className="mt-2 text-sm text-gray-400">
-            {accounts.length} rekening aktif
-          </p>
+              <p className="mt-2 text-4xl font-bold">
+                {formatRupiah(totalSaldo)}
+              </p>
+
+              <p className="mt-2 text-sm text-gray-400">
+                {accounts.length} rekening aktif
+              </p>
+            </div>
+
+            {/* AVAILABLE + GOAL */}
+            <div className="grid grid-cols-2 gap-3 md:min-w-[360px]">
+
+              <div className="rounded-xl bg-white/10 p-4">
+                <p className="text-xs text-gray-400">
+                  Saldo Tersedia
+                </p>
+
+                <p className="mt-1 text-lg font-bold text-white">
+                  {formatRupiah(totalSaldoTersedia)}
+                </p>
+
+                <p className="mt-1 text-xs text-gray-500">
+                  Siap digunakan
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-white/10 p-4">
+                <p className="text-xs text-gray-400">
+                  Dana Goal
+                </p>
+
+                <p className="mt-1 text-lg font-bold text-white">
+                  {formatRupiah(totalDanaGoal)}
+                </p>
+
+                <p className="mt-1 text-xs text-gray-500">
+                  Dana dicadangkan
+                </p>
+              </div>
+
+            </div>
+
+          </div>
         </section>
 
         {/* ================================================== */}
@@ -1657,7 +1738,7 @@ export default async function Home({
           )}
 
         </section>
-        
+
         <section className="rounded-2xl border bg-white p-6 shadow-sm">
           <div className="mb-5">
             <h2 className="text-lg font-semibold">Perubahan Pengeluaran</h2>
@@ -2014,23 +2095,54 @@ export default async function Home({
           ) : (
             <>
 
-              {/* TOTAL SALDO */}
+              {/* RINGKASAN SALDO */}
 
-              <div className="mb-6 rounded-2xl bg-white p-6 shadow-sm">
+              <div className="mb-6 grid gap-4 md:grid-cols-3">
 
-                <p className="text-sm text-gray-500">
-                  Total Saldo Keluarga
-                </p>
+                {/* TOTAL */}
+                <div className="rounded-2xl bg-white p-6 shadow-sm">
+                  <p className="text-sm text-gray-500">
+                    Total Saldo Keluarga
+                  </p>
 
-                <p className="mt-2 text-3xl font-bold text-gray-700">
-                  {formatRupiah(
-                    totalSaldo
-                  )}
-                </p>
+                  <p className="mt-2 text-2xl font-bold text-gray-700">
+                    {formatRupiah(totalSaldo)}
+                  </p>
 
-                <p className="mt-1 text-sm text-gray-400">
-                  Gabungan seluruh rekening aktif
-                </p>
+                  <p className="mt-1 text-xs text-gray-400">
+                    Gabungan seluruh rekening aktif
+                  </p>
+                </div>
+
+                {/* AVAILABLE */}
+                <div className="rounded-2xl bg-white p-6 shadow-sm">
+                  <p className="text-sm text-gray-500">
+                    Saldo Tersedia
+                  </p>
+
+                  <p className="mt-2 text-2xl font-bold text-gray-700">
+                    {formatRupiah(totalSaldoTersedia)}
+                  </p>
+
+                  <p className="mt-1 text-xs text-gray-400">
+                    Dapat digunakan untuk transaksi
+                  </p>
+                </div>
+
+                {/* GOAL */}
+                <div className="rounded-2xl bg-amber-50 p-6 shadow-sm">
+                  <p className="text-sm text-amber-700">
+                    Dana Goal
+                  </p>
+
+                  <p className="mt-2 text-2xl font-bold text-amber-900">
+                    {formatRupiah(totalDanaGoal)}
+                  </p>
+
+                  <p className="mt-1 text-xs text-amber-700">
+                    Dana yang sudah dicadangkan
+                  </p>
+                </div>
 
               </div>
 
@@ -2039,7 +2151,18 @@ export default async function Home({
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 
                 {accounts.map(
-                  (account) => (
+                  (account) => {
+
+                    const actualBalance =
+                      Number(account.balance ?? 0)
+
+                    const allocatedAmount =
+                      allocatedByAccount[account.account_id] ?? 0
+
+                    const availableBalance =
+                      actualBalance - allocatedAmount
+
+                    return (
 
                     <div
                       key={
@@ -2068,44 +2191,86 @@ export default async function Home({
 
                       </div>
 
-                      <div className="mt-5 flex items-end justify-between gap-3">
+                      {/* SALDO AKTUAL */}
 
-                        <p className="text-2xl font-bold text-gray-700">
-                          {formatRupiah(
-                            Number(
-                              account.balance ??
-                                0
-                            )
-                          )}
+                      <div className="mt-5">
+                        <p className="text-xs text-gray-500">
+                          Saldo aktual
                         </p>
 
-                        <span className="text-sm text-gray-500">
-                          {getBalancePercentage(
-                            Number(
-                              account.balance ??
-                                0
-                            )
-                          ).toFixed(
-                            1
-                          )}
-                          %
-                        </span>
+                        <div className="mt-1 flex items-end justify-between gap-3">
 
+                          <p className="text-2xl font-bold text-gray-700">
+                            {formatRupiah(actualBalance)}
+                          </p>
+
+                          <span className="text-sm text-gray-500">
+                            {getBalancePercentage(actualBalance).toFixed(1)}%
+                          </span>
+
+                        </div>
                       </div>
 
-                      <p className="mt-1 text-xs text-gray-400">
+                      {/* SALDO TERSEDIA */}
+
+                      <div className="mt-4 rounded-xl bg-gray-50 p-4">
+                        <p className="text-xs font-medium text-gray-500">
+                          Saldo tersedia
+                        </p>
+
+                        <p
+                          className={`mt-1 text-lg font-bold ${
+                            availableBalance < 0
+                              ? 'text-red-600'
+                              : 'text-gray-900'
+                          }`}
+                        >
+                          {formatRupiah(availableBalance)}
+                        </p>
+
+                        <p className="mt-1 text-xs text-gray-400">
+                          Dapat digunakan
+                        </p>
+                      </div>
+
+                      {/* DANA GOAL */}
+
+                      <div className="mt-3 rounded-xl bg-amber-50 p-4">
+                        <div className="flex items-center justify-between">
+
+                          <div>
+                            <p className="text-xs font-medium text-amber-700">
+                              Dana Goal
+                            </p>
+
+                            <p className="mt-1 text-lg font-bold text-amber-900">
+                              {formatRupiah(allocatedAmount)}
+                            </p>
+                          </div>
+
+                          <span className="text-lg">
+                            🎯
+                          </span>
+
+                        </div>
+
+                        {allocatedAmount > 0 && (
+                          <p className="mt-1 text-xs text-amber-700">
+                            Dicadangkan untuk goal
+                          </p>
+                        )}
+                      </div>
+
+                      <p className="mt-3 text-xs text-gray-400">
                         Saldo awal:{' '}
                         {formatRupiah(
-                          Number(
-                            account.initial_balance ??
-                              0
-                          )
+                          Number(account.initial_balance ?? 0)
                         )}
                       </p>
 
                     </div>
-
-                  )
+                    )
+                  }
                 )}
 
               </div>

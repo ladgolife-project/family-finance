@@ -14,11 +14,21 @@ type Goal = {
   is_active: boolean
 }
 
+type Account = {
+  id: string
+  name: string
+  type: string
+  balance: number
+  allocatedToGoals: number
+  availableBalance: number
+}
+
 type Contribution = {
   id: string
   amount: number
   contribution_date: string
   description: string | null
+  account_id: string
 }
 
 function formatRupiah(value: number) {
@@ -47,6 +57,9 @@ export default function EditGoalPage() {
   const goalId = params.id as string
 
   const [goal, setGoal] = useState<Goal | null>(null)
+
+  const [accounts, setAccounts] = useState<Account[]>([])
+
   const [contributions, setContributions] = useState<
     Contribution[]
   >([])
@@ -56,6 +69,8 @@ export default function EditGoalPage() {
   const [targetAmount, setTargetAmount] = useState('')
   const [deadline, setDeadline] = useState('')
 
+  const [contributionAccountId, setContributionAccountId] =
+    useState('')
   const [contributionAmount, setContributionAmount] =
     useState('')
   const [contributionDate, setContributionDate] =
@@ -82,17 +97,23 @@ export default function EditGoalPage() {
       return
     }
 
-    const { data: membership } = await supabase
-      .from('family_members')
-      .select('family_id')
-      .eq('user_id', user.id)
-      .single()
+    const { data: membership, error: membershipError } =
+      await supabase
+        .from('family_members')
+        .select('family_id')
+        .eq('user_id', user.id)
+        .single()
 
-    if (!membership?.family_id) {
-      setError('Data keluarga tidak ditemukan.')
+    if (membershipError || !membership?.family_id) {
+      setError(
+        membershipError?.message ||
+          'Data keluarga tidak ditemukan.'
+      )
       setLoading(false)
       return
     }
+
+    const familyId = membership.family_id
 
     const { data: goalData, error: goalError } =
       await supabase
@@ -107,7 +128,7 @@ export default function EditGoalPage() {
           is_active
         `)
         .eq('id', goalId)
-        .eq('family_id', membership.family_id)
+        .eq('family_id', familyId)
         .single()
 
     if (goalError || !goalData) {
@@ -116,23 +137,67 @@ export default function EditGoalPage() {
       return
     }
 
-    const { data: contributionData, error: contributionError } =
-      await supabase
-        .from('financial_goal_contributions')
-        .select(`
-          id,
-          amount,
-          contribution_date,
-          description
-        `)
-        .eq('goal_id', goalId)
-        .eq('family_id', membership.family_id)
-        .order('contribution_date', {
-          ascending: false,
-        })
-        .order('created_at', {
-          ascending: false,
-        })
+    const {
+      data: accountData,
+      error: accountError,
+    } = await supabase
+      .from('account_available_balances')
+      .select(`
+        account_id,
+        account_name,
+        account_type,
+        balance,
+        allocated_to_goals,
+        available_balance,
+        is_active
+      `)
+      .eq('family_id', familyId)
+      .eq('is_active', true)
+      .order('account_name', {
+        ascending: true,
+      })
+
+    if (accountError) {
+      setError(accountError.message)
+      setLoading(false)
+      return
+    }
+
+    const mappedAccounts: Account[] = (
+      accountData ?? []
+    ).map((account) => ({
+      id: account.account_id,
+      name: account.account_name,
+      type: account.account_type,
+      balance: Number(account.balance),
+      allocatedToGoals: Number(
+        account.allocated_to_goals
+      ),
+      availableBalance: Number(
+        account.available_balance
+      ),
+    }))
+
+    const {
+      data: contributionData,
+      error: contributionError,
+    } = await supabase
+      .from('financial_goal_contributions')
+      .select(`
+        id,
+        amount,
+        contribution_date,
+        description,
+        account_id
+      `)
+      .eq('goal_id', goalId)
+      .eq('family_id', familyId)
+      .order('contribution_date', {
+        ascending: false,
+      })
+      .order('created_at', {
+        ascending: false,
+      })
 
     if (contributionError) {
       setError(contributionError.message)
@@ -141,11 +206,16 @@ export default function EditGoalPage() {
     }
 
     setGoal(goalData)
+    setAccounts(mappedAccounts)
     setName(goalData.name)
     setDescription(goalData.description ?? '')
     setTargetAmount(String(goalData.target_amount))
     setDeadline(goalData.deadline ?? '')
     setContributions(contributionData ?? [])
+
+    if (!contributionAccountId && mappedAccounts.length > 0) {
+      setContributionAccountId(mappedAccounts[0].id)
+    }
 
     setContributionDate(
       new Date().toISOString().split('T')[0]
@@ -231,6 +301,11 @@ export default function EditGoalPage() {
 
     setError('')
 
+    if (!contributionAccountId) {
+      setError('Rekening sumber wajib dipilih.')
+      return
+    }
+
     const amount = Number(contributionAmount)
 
     if (!Number.isFinite(amount) || amount <= 0) {
@@ -243,12 +318,30 @@ export default function EditGoalPage() {
       return
     }
 
+    const selectedAccount = accounts.find(
+      (account) =>
+        account.id === contributionAccountId
+    )
+
+    if (!selectedAccount) {
+      setError('Rekening sumber tidak ditemukan.')
+      return
+    }
+
+    if (amount > selectedAccount.availableBalance) {
+      setError(
+        `Saldo tersedia ${selectedAccount.name} tidak mencukupi. Saldo yang masih bisa dialokasikan ${formatRupiah(selectedAccount.availableBalance)}.`
+      )
+      return
+    }
+
     setContributing(true)
 
     const { error: rpcError } = await supabase.rpc(
       'add_goal_contribution',
       {
         p_goal_id: goalId,
+        p_account_id: contributionAccountId,
         p_amount: amount,
         p_contribution_date: contributionDate,
         p_description:
@@ -274,7 +367,7 @@ export default function EditGoalPage() {
     contributionId: string
   ) {
     const confirmed = window.confirm(
-      'Yakin ingin menghapus kontribusi ini? Saldo Goal akan dikurangi kembali.'
+      'Yakin ingin menghapus kontribusi ini? Alokasi dana ke Goal akan dikurangi kembali.'
     )
 
     if (!confirmed) {
@@ -304,78 +397,58 @@ export default function EditGoalPage() {
 
   async function handleDeleteGoal() {
     const confirmed = window.confirm(
-        'Yakin ingin menghapus financial goal ini beserta seluruh riwayat kontribusinya?'
+      'Yakin ingin menghapus financial goal ini beserta seluruh riwayat kontribusinya?'
     )
 
     if (!confirmed) {
-        return
+      return
     }
 
     setError('')
     setDeletingGoal(true)
 
     const {
-        data: { user },
+      data: { user },
     } = await supabase.auth.getUser()
 
     if (!user) {
-        router.push('/login')
-        return
+      router.push('/login')
+      return
     }
 
     const { data: membership, error: membershipError } =
-        await supabase
+      await supabase
         .from('family_members')
         .select('family_id')
         .eq('user_id', user.id)
         .single()
 
     if (membershipError || !membership?.family_id) {
-        setError(
+      setError(
         membershipError?.message ||
-            'Data keluarga tidak ditemukan.'
-        )
-        setDeletingGoal(false)
-        return
+          'Data keluarga tidak ditemukan.'
+      )
+      setDeletingGoal(false)
+      return
     }
 
-    const familyId = membership.family_id
+    const { error: deleteError } = await supabase
+      .from('financial_goals')
+      .delete()
+      .eq('id', goalId)
+      .eq('family_id', membership.family_id)
 
-    // 1. Hapus seluruh kontribusi goal terlebih dahulu
-    const { error: contributionDeleteError } =
-        await supabase
-        .from('financial_goal_contributions')
-        .delete()
-        .eq('goal_id', goalId)
-        .eq('family_id', familyId)
-
-    if (contributionDeleteError) {
-        setError(
-        `Gagal menghapus riwayat kontribusi: ${contributionDeleteError.message}`
-        )
-        setDeletingGoal(false)
-        return
+    if (deleteError) {
+      setError(
+        `Gagal menghapus financial goal: ${deleteError.message}`
+      )
+      setDeletingGoal(false)
+      return
     }
 
-    // 2. Setelah kontribusi terhapus, hapus goal
-    const { error: goalDeleteError } = await supabase
-        .from('financial_goals')
-        .delete()
-        .eq('id', goalId)
-        .eq('family_id', familyId)
-
-    if (goalDeleteError) {
-        setError(
-        `Gagal menghapus financial goal: ${goalDeleteError.message}`
-        )
-        setDeletingGoal(false)
-        return
-    }
-
-    // 3. Kembali ke daftar goal
     router.push('/goals')
     router.refresh()
-    }
+  }
 
   if (loading) {
     return (
@@ -413,7 +486,12 @@ export default function EditGoalPage() {
       : 0
 
   const remaining =
-    targetAmountNumber - currentAmount
+    Math.max(targetAmountNumber - currentAmount, 0)
+
+  const selectedAccount = accounts.find(
+    (account) =>
+      account.id === contributionAccountId
+  )
 
   return (
     <main className="min-h-screen bg-gray-50 px-6 py-10">
@@ -444,7 +522,7 @@ export default function EditGoalPage() {
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="text-sm text-gray-400">
-                Terkumpul
+                Dana Goal
               </p>
 
               <p className="mt-1 text-3xl font-bold">
@@ -570,10 +648,16 @@ export default function EditGoalPage() {
 
           <button
             type="submit"
-            disabled={saving || contributing || deletingGoal}
+            disabled={
+              saving ||
+              contributing ||
+              deletingGoal
+            }
             className="w-full rounded-lg bg-black px-4 py-3 font-medium text-white disabled:opacity-50"
           >
-            {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
+            {saving
+              ? 'Menyimpan...'
+              : 'Simpan Perubahan'}
           </button>
 
         </form>
@@ -587,13 +671,106 @@ export default function EditGoalPage() {
 
           <div>
             <h2 className="text-lg font-semibold">
-              Tambah Dana
+              Alokasikan Dana
             </h2>
 
             <p className="mt-1 text-sm text-gray-500">
-              Tambahkan dana yang sudah dialokasikan ke goal ini.
+              Pilih rekening sumber untuk mengalokasikan
+              dana ke goal ini.
             </p>
           </div>
+
+          {/* REKENING SUMBER */}
+
+          <div>
+            <label className="mb-2 block text-sm font-medium">
+              Rekening Sumber
+            </label>
+
+            <select
+              value={contributionAccountId}
+              onChange={(event) =>
+                setContributionAccountId(
+                  event.target.value
+                )
+              }
+              className="w-full rounded-lg border px-4 py-3"
+            >
+              <option value="">
+                Pilih rekening
+              </option>
+
+              {accounts.map((account) => (
+                <option
+                  key={account.id}
+                  value={account.id}
+                >
+                  {account.name} —{' '}
+                  {formatRupiah(account.availableBalance)} tersedia
+                </option>
+              ))}
+            </select>
+
+            {selectedAccount && (
+              <div className="mt-2 rounded-lg bg-gray-50 px-4 py-3">
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>Saldo aktual</span>
+                    <span>
+                      {formatRupiah(selectedAccount.balance)}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>Sudah dialokasikan</span>
+                    <span>
+                      {formatRupiah(
+                        selectedAccount.allocatedToGoals
+                      )}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between border-t pt-2 font-semibold text-gray-700">
+                    <span>Masih tersedia</span>
+                    <span>
+                      {formatRupiah(
+                        selectedAccount.availableBalance
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* BATAS TARGET */}
+
+          <div className="rounded-lg bg-gray-50 px-4 py-3">
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>Target Goal</span>
+                <span>
+                  {formatRupiah(targetAmountNumber)}
+                </span>
+              </div>
+
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>Dana Goal</span>
+                <span>
+                  {formatRupiah(currentAmount)}
+                </span>
+              </div>
+
+              <div className="flex justify-between border-t pt-2 font-semibold text-gray-700">
+                <span>Sisa Target</span>
+                <span>
+                  {formatRupiah(remaining)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* NOMINAL */}
 
           <div>
             <label className="mb-2 block text-sm font-medium">
@@ -605,12 +782,43 @@ export default function EditGoalPage() {
               min="1"
               value={contributionAmount}
               onChange={(event) =>
-                setContributionAmount(event.target.value)
+                setContributionAmount(
+                  event.target.value
+                )
               }
               placeholder="1000000"
               className="w-full rounded-lg border px-4 py-3"
             />
+
+            {selectedAccount &&
+              contributionAmount &&
+              Number(contributionAmount) >
+                selectedAccount.availableBalance && (
+                <p className="mt-2 text-xs text-red-600">
+                  Nominal melebihi saldo yang masih tersedia untuk
+                  dialokasikan.
+                </p>
+              )}
+
+            {contributionAmount &&
+              Number(contributionAmount) > remaining && (
+                <p className="mt-2 text-xs text-red-600">
+                  Nominal melebihi sisa target goal.
+                  Maksimal {formatRupiah(remaining)}.
+                </p>
+              )}
+
+            <p className="mt-2 text-xs text-gray-400">
+              Maksimal alokasi: {formatRupiah(
+                Math.min(
+                  selectedAccount?.availableBalance ?? 0,
+                  remaining
+                )
+              )}
+            </p>
           </div>
+
+          {/* TANGGAL */}
 
           <div>
             <label className="mb-2 block text-sm font-medium">
@@ -621,11 +829,15 @@ export default function EditGoalPage() {
               type="date"
               value={contributionDate}
               onChange={(event) =>
-                setContributionDate(event.target.value)
+                setContributionDate(
+                  event.target.value
+                )
               }
               className="w-full rounded-lg border px-4 py-3"
             />
           </div>
+
+          {/* KETERANGAN */}
 
           <div>
             <label className="mb-2 block text-sm font-medium">
@@ -647,12 +859,24 @@ export default function EditGoalPage() {
 
           <button
             type="submit"
-            disabled={contributing || saving || deletingGoal}
+            disabled={
+              contributing ||
+              saving ||
+              deletingGoal ||
+              !contributionAccountId ||
+              !contributionAmount ||
+              Number(contributionAmount) <= 0 ||
+              Number(contributionAmount) > remaining ||
+              (selectedAccount
+                ? Number(contributionAmount) >
+                  selectedAccount.availableBalance
+                : false)
+            }
             className="w-full rounded-lg bg-black px-4 py-3 font-medium text-white disabled:opacity-50"
           >
             {contributing
-              ? 'Menambahkan...'
-              : 'Tambah Dana'}
+              ? 'Mengalokasikan...'
+              : 'Alokasikan Dana'}
           </button>
 
         </form>
@@ -663,63 +887,83 @@ export default function EditGoalPage() {
 
           <div className="mb-5">
             <h2 className="text-lg font-semibold">
-              Riwayat Kontribusi
+              Riwayat Alokasi
             </h2>
 
             <p className="mt-1 text-sm text-gray-500">
-              Semua dana yang pernah ditambahkan ke goal.
+              Histori dana yang dialokasikan ke goal.
             </p>
           </div>
 
           {contributions.length === 0 ? (
             <p className="text-sm text-gray-500">
-              Belum ada kontribusi.
+              Belum ada alokasi dana.
             </p>
           ) : (
             <div className="space-y-4">
 
-              {contributions.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between gap-4 border-b pb-4 last:border-0 last:pb-0"
-                >
+              {contributions.map((item) => {
+                const account = accounts.find(
+                  (account) =>
+                    account.id === item.account_id
+                )
 
-                  <div className="min-w-0">
-                    <p className="font-semibold text-green-600">
-                      + {formatRupiah(Number(item.amount))}
-                    </p>
-
-                    <p className="mt-1 text-xs text-gray-500">
-                      {formatDate(item.contribution_date)}
-                    </p>
-
-                    {item.description && (
-                      <p className="mt-1 truncate text-xs text-gray-400">
-                        {item.description}
-                      </p>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleDeleteContribution(item.id)
-                    }
-                    disabled={
-                      deletingContribution === item.id ||
-                      saving ||
-                      contributing ||
-                      deletingGoal
-                    }
-                    className="shrink-0 rounded-lg border border-red-300 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                return (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between gap-4 border-b pb-4 last:border-0 last:pb-0"
                   >
-                    {deletingContribution === item.id
-                      ? 'Menghapus...'
-                      : 'Hapus'}
-                  </button>
 
-                </div>
-              ))}
+                    <div className="min-w-0">
+
+                      <p className="font-semibold text-green-600">
+                        + {formatRupiah(Number(item.amount))}
+                      </p>
+
+                      <p className="mt-1 text-xs text-gray-500">
+                        {account?.name ||
+                          'Rekening tidak ditemukan'}
+                      </p>
+
+                      <p className="mt-1 text-xs text-gray-500">
+                        {formatDate(
+                          item.contribution_date
+                        )}
+                      </p>
+
+                      {item.description && (
+                        <p className="mt-1 truncate text-xs text-gray-400">
+                          {item.description}
+                        </p>
+                      )}
+
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleDeleteContribution(
+                          item.id
+                        )
+                      }
+                      disabled={
+                        deletingContribution ===
+                          item.id ||
+                        saving ||
+                        contributing ||
+                        deletingGoal
+                      }
+                      className="shrink-0 rounded-lg border border-red-300 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                    >
+                      {deletingContribution ===
+                      item.id
+                        ? 'Menghapus...'
+                        : 'Hapus'}
+                    </button>
+
+                  </div>
+                )
+              })}
 
             </div>
           )}
@@ -735,8 +979,8 @@ export default function EditGoalPage() {
           </h2>
 
           <p className="mt-1 text-sm text-red-600">
-            Menghapus goal juga akan menghapus seluruh riwayat
-            kontribusinya.
+            Menghapus goal juga akan menghapus seluruh
+            riwayat kontribusinya.
           </p>
 
           <button

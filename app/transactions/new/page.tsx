@@ -16,8 +16,11 @@ type Category = {
 }
 
 function getRpcErrorMessage(message: string) {
-  if (message.includes('Saldo rekening tidak mencukupi')) {
-    return 'Saldo rekening tidak mencukupi untuk transaksi ini.'
+  if (
+    message.includes('Saldo rekening tidak mencukupi') ||
+    message.includes('Saldo tersedia tidak mencukupi')
+  ) {
+    return 'Saldo tersedia tidak mencukupi untuk transaksi ini.'
   }
 
   if (message.includes('Rekening tidak ditemukan')) {

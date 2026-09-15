@@ -44,11 +44,11 @@ export default async function TransfersPage() {
   const { data: accounts } = await supabase
     .from('accounts')
     .select(`
-      account_id,
-      account_name
+      id,
+      name
     `)
     .eq('family_id', familyId)
-    .order('account_name')
+    .order('name')
 
   const { data: transfers, error } = await supabase
     .from('transfers')
@@ -71,8 +71,8 @@ export default async function TransfersPage() {
 
   const accountMap = new Map(
     (accounts ?? []).map((account) => [
-      account.account_id,
-      account.account_name,
+      account.id,
+      account.name,
     ])
   )
 
@@ -89,7 +89,7 @@ export default async function TransfersPage() {
               ← Dashboard
             </Link>
 
-            <h1 className="mt-4 text-3xl font-bold">
+            <h1 className="mt-4 text-3xl font-bold text-gray-700">
               Transfer
             </h1>
 
@@ -105,12 +105,12 @@ export default async function TransfersPage() {
             + Transfer
           </Link>
         </div>
-        
+
         <section className="overflow-hidden rounded-2xl bg-white shadow-sm">
 
           {(transfers ?? []).length === 0 ? (
             <div className="p-12 text-center">
-              <h2 className="text-lg font-semibold">
+              <h2 className="text-lg font-semibold text-gray-700">
                 Belum ada transfer
               </h2>
 
@@ -121,41 +121,53 @@ export default async function TransfersPage() {
           ) : (
             <div className="divide-y">
 
-              {(transfers as Transfer[]).map(
-                (transfer) => (
-                  <div
-                    key={transfer.id}
-                    className="flex flex-col gap-3 p-5 md:flex-row md:items-center md:justify-between"
-                  >
+              {(transfers as Transfer[]).map((transfer) => (
+                <div
+                  key={transfer.id}
+                  className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between"
+                >
 
-                    <div>
-                      <p className="font-semibold">
-                        {accountMap.get(
-                          transfer.from_account_id
-                        ) ?? 'Rekening sumber'}
-                        {' → '}
-                        {accountMap.get(
-                          transfer.to_account_id
-                        ) ?? 'Rekening tujuan'}
-                      </p>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-gray-700">
+                      {accountMap.get(
+                        transfer.from_account_id
+                      ) ?? 'Rekening sumber'}
 
-                      <p className="mt-1 text-sm text-gray-500">
-                        {transfer.transfer_date}
-                        {transfer.description
-                          ? ` · ${transfer.description}`
-                          : ''}
-                      </p>
-                    </div>
+                      {' → '}
 
-                    <p className="font-bold">
+                      {accountMap.get(
+                        transfer.to_account_id
+                      ) ?? 'Rekening tujuan'}
+                    </p>
+
+                    <p className="mt-1 text-sm text-gray-500">
+                      {transfer.transfer_date}
+
+                      {transfer.description
+                        ? ` · ${transfer.description}`
+                        : ''}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-5 md:justify-end">
+
+                    <p className="font-bold text-gray-700">
                       {formatRupiah(
                         Number(transfer.amount)
                       )}
                     </p>
 
+                    <Link
+                      href={`/transfers/${transfer.id}/edit`}
+                      className="rounded-lg border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      Edit
+                    </Link>
+
                   </div>
-                )
-              )}
+
+                </div>
+              ))}
 
             </div>
           )}

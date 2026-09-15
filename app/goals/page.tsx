@@ -156,7 +156,7 @@ export default async function GoalsPage() {
 
                       <div>
                         <p className="text-xs text-gray-500">
-                          Terkumpul
+                          Dana Goal
                         </p>
 
                         <p className="mt-1 text-xl font-bold text-gray-700">
