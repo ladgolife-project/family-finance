@@ -42,3 +42,6 @@ next-env.d.ts
 
 # Supabase
 /supabase/.temp/
+
+# Database backup
+/family-finance-data.sql
