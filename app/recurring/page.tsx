@@ -287,7 +287,7 @@ export default async function RecurringPage({
               ← Dashboard
             </Link>
 
-            <h1 className="mt-4 text-3xl font-bold">
+            <h1 className="mt-4 text-3xl font-bold text-black">
               Transaksi Berulang
             </h1>
 
@@ -482,7 +482,7 @@ export default async function RecurringPage({
 
                           <Link
                             href={`/recurring/${item.id}/edit`}
-                            className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-gray-50"
+                            className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-gray-50 text-gray-400"
                           >
                             Edit
                           </Link>
@@ -500,7 +500,7 @@ export default async function RecurringPage({
 
                             <button
                               type="submit"
-                              className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-gray-50"
+                              className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-gray-50 text-gray-400"
                             >
                               {item.is_active
                                 ? 'Nonaktifkan'

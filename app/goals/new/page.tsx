@@ -108,7 +108,7 @@ export default function NewGoalPage() {
         >
 
           <div>
-            <label className="mb-2 block text-sm font-medium">
+            <label className="mb-2 block text-sm font-medium text-gray-600">
               Nama Goal
             </label>
 
@@ -119,12 +119,12 @@ export default function NewGoalPage() {
                 setName(event.target.value)
               }
               placeholder="Contoh: Dana Rumah"
-              className="w-full rounded-lg border px-4 py-3"
+              className="w-full rounded-lg border px-4 py-3 text-gray-500"
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium">
+            <label className="mb-2 block text-sm font-medium text-gray-600">
               Deskripsi
             </label>
 
@@ -135,12 +135,12 @@ export default function NewGoalPage() {
               }
               placeholder="Contoh: DP rumah dalam 3 tahun"
               rows={3}
-              className="w-full rounded-lg border px-4 py-3"
+              className="w-full rounded-lg border px-4 py-3 text-gray-500"
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium">
+            <label className="mb-2 block text-sm font-medium text-gray-600">
               Target Nominal
             </label>
 
@@ -152,12 +152,12 @@ export default function NewGoalPage() {
                 setTargetAmount(event.target.value)
               }
               placeholder="500000000"
-              className="w-full rounded-lg border px-4 py-3"
+              className="w-full rounded-lg border px-4 py-3 text-gray-500"
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium">
+            <label className="mb-2 block text-sm font-medium text-gray-600">
               Deadline
             </label>
 
@@ -167,7 +167,7 @@ export default function NewGoalPage() {
               onChange={(event) =>
                 setDeadline(event.target.value)
               }
-              className="w-full rounded-lg border px-4 py-3"
+              className="w-full rounded-lg border px-4 py-3 text-gray-500"
             />
           </div>
 
@@ -182,7 +182,7 @@ export default function NewGoalPage() {
             <button
               type="button"
               onClick={() => router.back()}
-              className="flex-1 rounded-lg border px-4 py-3 font-medium"
+              className="flex-1 rounded-lg border px-4 py-3 font-medium text-gray-600"
             >
               Batal
             </button>

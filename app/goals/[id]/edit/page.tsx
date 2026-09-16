@@ -572,7 +572,7 @@ export default function EditGoalPage() {
 
         <form
           onSubmit={handleUpdate}
-          className="mt-6 space-y-5 rounded-2xl bg-white p-6 shadow-sm"
+          className="mt-6 space-y-5 rounded-2xl bg-white p-6 shadow-sm text-gray-500"
         >
 
           <h2 className="text-lg font-semibold">
@@ -670,7 +670,7 @@ export default function EditGoalPage() {
         >
 
           <div>
-            <h2 className="text-lg font-semibold">
+            <h2 className="text-lg font-semibold text-gray-600">
               Alokasikan Dana
             </h2>
 
@@ -683,7 +683,7 @@ export default function EditGoalPage() {
           {/* REKENING SUMBER */}
 
           <div>
-            <label className="mb-2 block text-sm font-medium">
+            <label className="mb-2 block text-sm font-medium text-gray-600">
               Rekening Sumber
             </label>
 
@@ -694,7 +694,7 @@ export default function EditGoalPage() {
                   event.target.value
                 )
               }
-              className="w-full rounded-lg border px-4 py-3"
+              className="w-full rounded-lg border px-4 py-3 text-gray-600"
             >
               <option value="">
                 Pilih rekening
@@ -773,7 +773,7 @@ export default function EditGoalPage() {
           {/* NOMINAL */}
 
           <div>
-            <label className="mb-2 block text-sm font-medium">
+            <label className="mb-2 block text-sm font-medium text-gray-600">
               Nominal
             </label>
 
@@ -787,7 +787,7 @@ export default function EditGoalPage() {
                 )
               }
               placeholder="1000000"
-              className="w-full rounded-lg border px-4 py-3"
+              className="w-full rounded-lg border px-4 py-3 text-gray-500"
             />
 
             {selectedAccount &&
@@ -821,7 +821,7 @@ export default function EditGoalPage() {
           {/* TANGGAL */}
 
           <div>
-            <label className="mb-2 block text-sm font-medium">
+            <label className="mb-2 block text-sm font-medium text-gray-600">
               Tanggal
             </label>
 
@@ -833,14 +833,14 @@ export default function EditGoalPage() {
                   event.target.value
                 )
               }
-              className="w-full rounded-lg border px-4 py-3"
+              className="w-full rounded-lg border px-4 py-3 text-gray-500"
             />
           </div>
 
           {/* KETERANGAN */}
 
           <div>
-            <label className="mb-2 block text-sm font-medium">
+            <label className="mb-2 block text-sm font-medium text-gray-600">
               Keterangan
             </label>
 
@@ -853,7 +853,7 @@ export default function EditGoalPage() {
                 )
               }
               placeholder="Contoh: Tabungan bulan September"
-              className="w-full rounded-lg border px-4 py-3"
+              className="w-full rounded-lg border px-4 py-3 text-gray-500"
             />
           </div>
 
@@ -886,7 +886,7 @@ export default function EditGoalPage() {
         <section className="mt-6 rounded-2xl bg-white p-6 shadow-sm">
 
           <div className="mb-5">
-            <h2 className="text-lg font-semibold">
+            <h2 className="text-lg font-semibold text-gray-600">
               Riwayat Alokasi
             </h2>
 

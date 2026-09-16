@@ -134,7 +134,7 @@ export default async function ReportsPage({
     .from('budgets')
     .select('id, category_id, amount')
     .eq('family_id', familyId)
-    .eq('month', startDate)
+    .is('month', null)
     .eq('is_active', true)
 
   const categoryMap = new Map(

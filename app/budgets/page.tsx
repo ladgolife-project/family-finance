@@ -348,7 +348,7 @@ export default async function BudgetsPage({
             >
               <label
                 htmlFor="month"
-                className="text-sm font-medium"
+                className="text-sm font-medium text-gray-500"
               >
                 Bulan
               </label>
@@ -358,7 +358,7 @@ export default async function BudgetsPage({
                 type="month"
                 name="month"
                 defaultValue={selectedMonth}
-                className="rounded-lg border bg-white px-3 py-2 text-sm"
+                className="rounded-lg border bg-white px-3 py-2 text-sm text-gray-500"
               />
 
               <button
@@ -411,14 +411,14 @@ export default async function BudgetsPage({
               Total Budget
             </p>
 
-            <p className="mt-2 text-2xl font-bold">
+            <p className="mt-2 text-2xl font-bold text-gray-600">
               {formatRupiah(
                 totalBudget
               )}
             </p>
           </div>
 
-          <div className="rounded-2xl bg-white p-5 shadow-sm">
+          <div className="rounded-2xl bg-white p-5 shadow-sm text-gray-600">
             <p className="text-sm text-gray-500">
               Sudah Terpakai
             </p>

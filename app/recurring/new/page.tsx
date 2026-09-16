@@ -197,13 +197,13 @@ export default function NewRecurringPage() {
           ← Kembali
         </button>
 
-        <h1 className="mt-4 text-3xl font-bold">
+        <h1 className="mt-4 text-3xl font-bold text-gray-600">
           Tambah Transaksi Berulang
         </h1>
 
         <form
           onSubmit={handleSubmit}
-          className="mt-8 space-y-5 rounded-2xl bg-white p-6 shadow-sm"
+          className="mt-8 space-y-5 rounded-2xl bg-white p-6 shadow-sm text-gray-500"
         >
 
           <div>

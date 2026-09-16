@@ -118,7 +118,7 @@ export default async function EditAccountPage({
           ← Kembali ke Rekening
         </Link>
 
-        <h1 className="mt-4 text-3xl font-bold">
+        <h1 className="mt-4 text-3xl font-bold text-gray-600">
           Edit Rekening
         </h1>
 
@@ -128,7 +128,7 @@ export default async function EditAccountPage({
 
         <form
           action={updateAccount}
-          className="mt-8 space-y-5 rounded-2xl bg-white p-6 shadow-sm"
+          className="mt-8 space-y-5 rounded-2xl bg-white p-6 shadow-sm text-gray-600"
         >
 
           <div>

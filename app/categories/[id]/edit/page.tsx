@@ -218,7 +218,7 @@
     }
 
     return (
-      <main className="min-h-screen bg-gray-50 px-6 py-10">
+      <main className="min-h-screen bg-gray-50 px-6 py-10 text-gray-500">
         <div className="mx-auto max-w-xl">
 
           <button
@@ -267,7 +267,7 @@
                 className="w-full rounded-lg border px-4 py-3 disabled:bg-gray-100 disabled:text-gray-500"
               >
                 {isUsed && (
-                  <p className="mt-2 text-xs text-gray-500">
+                  <p className="mt-2 text-xs">
                     Tipe kategori tidak dapat diubah karena
                     kategori ini sudah digunakan dalam transaksi.
                   </p>

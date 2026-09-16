@@ -51,7 +51,7 @@ export default async function CategoriesPage() {
     )
 
   return (
-    <main className="min-h-screen bg-gray-50 px-6 py-10">
+    <main className="min-h-screen bg-gray-50 px-6 py-10 text-gray-600">
       <div className="mx-auto max-w-5xl">
 
         {/* HEADER */}

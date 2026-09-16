@@ -1741,15 +1741,15 @@ export default async function Home({
 
         <section className="rounded-2xl border bg-white p-6 shadow-sm">
           <div className="mb-5">
-            <h2 className="text-lg font-semibold">Perubahan Pengeluaran</h2>
-            <p className="text-sm text-muted-foreground">
+            <h2 className="text-lg font-semibold text-gray-600">Perubahan Pengeluaran</h2>
+            <p className="text-sm text-muted-foreground text-gray-400">
               Perbandingan dengan bulan sebelumnya
             </p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
             {/* Total perubahan */}
-            <div className="rounded-xl border p-4">
+            <div className="rounded-xl border p-4 text-gray-600">
               <p className="text-sm text-muted-foreground">
                 Total Pengeluaran
               </p>
@@ -1766,7 +1766,7 @@ export default async function Home({
             </div>
 
             {/* Kenaikan terbesar */}
-            <div className="rounded-xl border p-4">
+            <div className="rounded-xl border p-4 text-gray-600">
               <p className="text-sm text-muted-foreground">
                 Kenaikan Terbesar
               </p>
@@ -1795,7 +1795,7 @@ export default async function Home({
             </div>
 
             {/* Penurunan terbesar */}
-            <div className="rounded-xl border p-4">
+            <div className="rounded-xl border p-4 text-gray-600">
               <p className="text-sm text-muted-foreground">
                 Penurunan Terbesar
               </p>
@@ -1891,7 +1891,7 @@ export default async function Home({
         </section>
 
         <section className="rounded-2xl border bg-white p-6 shadow-sm">
-          <div className="mb-5">
+          <div className="mb-5 text-gray-600">
             <h2 className="text-lg font-semibold">Financial Insights</h2>
             <p className="text-sm text-muted-foreground">
               Ringkasan otomatis kondisi keuangan bulan ini
@@ -1899,13 +1899,13 @@ export default async function Home({
           </div>
 
           {financialInsights.length === 0 ? (
-            <div className="rounded-xl border border-dashed p-6 text-center">
+            <div className="rounded-xl border border-dashed p-6 text-center text-gray-500">
               <p className="text-sm text-muted-foreground">
                 Belum ada insight yang cukup untuk ditampilkan.
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 text-gray-500">
               {financialInsights.map((insight, index) => (
                 <div
                   key={`${insight.title}-${index}`}

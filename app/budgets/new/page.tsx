@@ -236,7 +236,7 @@ export default function NewBudgetPage() {
           ← Kembali
         </button>
 
-        <h1 className="mt-4 text-3xl font-bold">
+        <h1 className="mt-4 text-3xl font-bold text-gray-600">
           Tambah Budget
         </h1>
 
@@ -253,7 +253,7 @@ export default function NewBudgetPage() {
           {/* KATEGORI */}
 
           <div>
-            <label className="mb-2 block text-sm font-medium">
+            <label className="mb-2 block text-sm font-medium text-gray-600">
               Kategori
             </label>
 
@@ -264,7 +264,7 @@ export default function NewBudgetPage() {
                   event.target.value
                 )
               }
-              className="w-full rounded-lg border px-4 py-3"
+              className="w-full rounded-lg border px-4 py-3 text-gray-500"
             >
               <option value="">
                 Pilih kategori
@@ -286,7 +286,7 @@ export default function NewBudgetPage() {
           {/* NOMINAL */}
 
           <div>
-            <label className="mb-2 block text-sm font-medium">
+            <label className="mb-2 block text-sm font-medium text-gray-600">
               Nominal Budget Bulanan
             </label>
 
@@ -301,7 +301,7 @@ export default function NewBudgetPage() {
                 )
               }
               placeholder="1000000"
-              className="w-full rounded-lg border px-4 py-3"
+              className="w-full rounded-lg border px-4 py-3 text-gray-500"
             />
           </div>
 
@@ -336,7 +336,7 @@ export default function NewBudgetPage() {
             <button
               type="button"
               onClick={() => router.back()}
-              className="flex-1 rounded-lg border px-4 py-3 font-medium"
+              className="flex-1 rounded-lg border px-4 py-3 font-medium text-gray-600"
             >
               Batal
             </button>
