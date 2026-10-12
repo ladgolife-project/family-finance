@@ -45,3 +45,4 @@ next-env.d.ts
 
 # Database backup
 /family-finance-data.sql
+.vercel

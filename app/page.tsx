@@ -163,33 +163,21 @@ export default async function Home({
     ? membership.families[0]
     : membership.families
 
-  // ============================================================
-  // ACCOUNTS
-  // ============================================================
-
-  const { data: accountData, error: accountError } =
-    await supabase
+  const [
+    accountResult,
+    goalsResult,
+    goalContributionsResult,
+    monthlyTransactionsResult,
+    budgetsResult,
+  ] = await Promise.all([
+    supabase
       .from('account_balances')
       .select('*')
       .eq('family_id', familyId)
       .eq('is_active', true)
-      .order('account_name')
+      .order('account_name'),
 
-  if (accountError) {
-    console.error(
-      'Gagal mengambil saldo rekening:',
-      accountError
-    )
-  }
-
-  const accounts = accountData ?? []
-
-  // ============================================================
-  // FINANCIAL GOALS
-  // ============================================================
-
-  const { data: financialGoals } =
-    await supabase
+    supabase
       .from('financial_goals')
       .select(`
         id,
@@ -203,49 +191,87 @@ export default async function Home({
       .order('deadline', {
         ascending: true,
       })
-      .limit(3)
+      .limit(3),
 
-  // ============================================================
-  // GOAL CONTRIBUTIONS / DANA CADANGAN
-  // ============================================================
-
-  const { data: goalContributions, error: goalContributionError } =
-    await supabase
+    supabase
       .from('financial_goal_contributions')
       .select(`
         account_id,
         amount
       `)
+      .eq('family_id', familyId),
+
+    supabase
+      .from('transactions')
+      .select(`
+        id,
+        type,
+        amount,
+        category_id,
+        transaction_date
+      `)
       .eq('family_id', familyId)
+      .gte(
+        'transaction_date',
+        monthRange.startDate
+      )
+      .lt(
+        'transaction_date',
+        monthRange.endDate
+      ),
 
-  if (goalContributionError) {
-    console.error(
-      'Gagal mengambil dana goal:',
-      goalContributionError
-    )
-  }
+    supabase
+      .from('budgets')
+      .select(`
+        id,
+        category_id,
+        amount
+      `)
+      .eq('family_id', familyId)
+      .eq('is_active', true),
+  ])
 
-  // Total dana goal per rekening
+  const accountData = accountResult.data
+  const accountError = accountResult.error
+
+  const financialGoals = goalsResult.data
+
+  const goalContributions =
+    goalContributionsResult.data
+
+  const goalContributionError =
+    goalContributionsResult.error
+
+  const monthlyTransactions =
+    monthlyTransactionsResult.data
+
+  
+  const budgets = budgetsResult.data
+
+  // ============================================================
+  // RINGKASAN SALDO DAN ALOKASI GOAL
+  // ============================================================
+
+  const accounts = accountData ?? []
+
   const allocatedByAccount: Record<string, number> = {}
 
   for (const contribution of goalContributions ?? []) {
     const accountId = contribution.account_id
-    const amount = Number(contribution.amount ?? 0)
+
+    if (!accountId) continue
 
     allocatedByAccount[accountId] =
-      (allocatedByAccount[accountId] ?? 0) + amount
+      (allocatedByAccount[accountId] ?? 0) +
+      Number(contribution.amount ?? 0)
   }
-
-  // ============================================================
-  // TOTAL SALDO & DANA TERSEDIA
-  // ============================================================
 
   const totalSaldo = accounts.reduce(
     (total, account) =>
       total + Number(account.balance ?? 0),
     0
   )
-
+  
   const totalDanaGoal = accounts.reduce(
     (total, account) =>
       total +
@@ -253,48 +279,13 @@ export default async function Home({
     0
   )
 
-  const totalSaldoTersedia =
-    totalSaldo - totalDanaGoal
-
-  // ============================================================
-  // TRANSACTIONS BULAN TERPILIH
-  // ============================================================
-
-  const {
-    data: monthlyTransactions,
-  } = await supabase
-    .from('transactions')
-    .select(`
-      id,
-      type,
-      amount,
-      category_id,
-      transaction_date
-    `)
-    .eq('family_id', familyId)
-    .gte(
-      'transaction_date',
-      monthRange.startDate
-    )
-    .lt(
-      'transaction_date',
-      monthRange.endDate
-    )
-
-  // ============================================================
-  // BUDGET
-  // ============================================================
-
-  const { data: budgets } =
-  await supabase
-    .from('budgets')
-    .select(`
-      id,
-      category_id,
-      amount
-    `)
-    .eq('family_id', familyId)
-    .eq('is_active', true)
+  const totalSaldoTersedia = accounts.reduce(
+    (total, account) =>
+      total +
+      Number(account.balance ?? 0) -
+      (allocatedByAccount[account.account_id] ?? 0),
+    0
+  )
 
   // ============================================================
   // RINGKASAN BULANAN
@@ -535,41 +526,56 @@ export default async function Home({
   // ============================================================
   // SPENDING ANALYSIS
   // ============================================================
-
-  const { data: expenseTransactions } =
-    await supabase
-      .from('transactions')
-      .select(`
-        amount,
-        category_id,
-        categories (
-          name
+  
+  const currentCategoryIds = [
+    ...new Set(
+      (monthlyTransactions ?? [])
+        .filter(
+          (transaction) =>
+            transaction.type === 'expense'
         )
-      `)
-      .eq('family_id', familyId)
-      .eq('type', 'expense')
-      .gte(
-        'transaction_date',
-        monthRange.startDate
-      )
-      .lt(
-        'transaction_date',
-        monthRange.endDate
-      )
+        .map(
+          (transaction) =>
+            transaction.category_id
+        )
+        .filter(Boolean)
+    ),
+  ]
+
+  const { data: currentCategories } =
+    currentCategoryIds.length > 0
+      ? await supabase
+          .from('categories')
+          .select('id, name')
+          .eq('family_id', familyId)
+          .in('id', currentCategoryIds)
+      : { data: [] }
+
+  const categoryNameMap = new Map(
+    (currentCategories ?? []).map(
+      (category) => [
+        category.id,
+        category.name,
+      ]
+    )
+  )
 
   const categoryTotals: Record<string, number> = {}
 
-  expenseTransactions?.forEach(
-    (transaction: any) => {
-      const categoryName =
-        transaction.categories?.name ??
-        'Lainnya'
-
-      categoryTotals[categoryName] =
-        (categoryTotals[categoryName] ?? 0) +
-        Number(transaction.amount ?? 0)
+  for (const transaction of monthlyTransactions ?? []) {
+    if (transaction.type !== 'expense') {
+      continue
     }
-  )
+
+    const categoryName =
+      categoryNameMap.get(
+        transaction.category_id
+      ) ?? 'Lainnya'
+
+    categoryTotals[categoryName] =
+      (categoryTotals[categoryName] ?? 0) +
+      Number(transaction.amount ?? 0)
+  }
 
   const expenseByCategory =
     Object.entries(categoryTotals)
@@ -788,6 +794,77 @@ export default async function Home({
   // CASH FLOW 6 BULAN
   // ============================================================
 
+  const firstChartMonth = getPreviousMonth(
+    monthRange.year,
+    monthRange.month,
+    5
+  )
+
+  const { data: sixMonthTransactions } =
+    await supabase
+      .from('transactions')
+      .select(`
+        type,
+        amount,
+        transaction_date
+      `)
+      .eq('family_id', familyId)
+      .gte(
+        'transaction_date',
+        firstChartMonth.startDate
+      )
+      .lt(
+        'transaction_date',
+        monthRange.endDate
+      )
+
+  const cashFlowByMonth: Record<
+    string,
+    {
+      income: number
+      expense: number
+    }
+  > = {}
+
+  for (let i = 5; i >= 0; i--) {
+    const chartMonth = getPreviousMonth(
+      monthRange.year,
+      monthRange.month,
+      i
+    )
+
+    const key = `${chartMonth.year}-${String(
+      chartMonth.month
+    ).padStart(2, '0')}`
+
+    cashFlowByMonth[key] = {
+      income: 0,
+      expense: 0,
+    }
+  }
+
+  for (const transaction of sixMonthTransactions ?? []) {
+    const transactionDate =
+      transaction.transaction_date
+
+    const key = transactionDate.slice(0, 7)
+
+    if (!cashFlowByMonth[key]) {
+      continue
+    }
+
+    const amount =
+      Number(transaction.amount ?? 0)
+
+    if (transaction.type === 'income') {
+      cashFlowByMonth[key].income += amount
+    }
+
+    if (transaction.type === 'expense') {
+      cashFlowByMonth[key].expense += amount
+    }
+  }
+
   const cashFlowChartData: {
     month: string
     income: number
@@ -795,56 +872,21 @@ export default async function Home({
   }[] = []
 
   for (let i = 5; i >= 0; i--) {
-    const chartMonth =
-      getPreviousMonth(
-        monthRange.year,
-        monthRange.month,
-        i
-      )
+    const chartMonth = getPreviousMonth(
+      monthRange.year,
+      monthRange.month,
+      i
+    )
 
-    const {
-      data: chartTransactions,
-    } = await supabase
-      .from('transactions')
-      .select(`
-        type,
-        amount
-      `)
-      .eq('family_id', familyId)
-      .gte(
-        'transaction_date',
-        chartMonth.startDate
-      )
-      .lt(
-        'transaction_date',
-        chartMonth.endDate
-      )
+    const key = `${chartMonth.year}-${String(
+      chartMonth.month
+    ).padStart(2, '0')}`
 
-    const income =
-      chartTransactions
-        ?.filter(
-          (transaction) =>
-            transaction.type === 'income'
-        )
-        .reduce(
-          (total, transaction) =>
-            total +
-            Number(transaction.amount),
-          0
-        ) ?? 0
-
-    const expense =
-      chartTransactions
-        ?.filter(
-          (transaction) =>
-            transaction.type === 'expense'
-        )
-        .reduce(
-          (total, transaction) =>
-            total +
-            Number(transaction.amount),
-          0
-        ) ?? 0
+    const values =
+      cashFlowByMonth[key] ?? {
+        income: 0,
+        expense: 0,
+      }
 
     const monthName =
       new Intl.DateTimeFormat(
@@ -856,8 +898,8 @@ export default async function Home({
 
     cashFlowChartData.push({
       month: monthName,
-      income,
-      expense,
+      income: values.income,
+      expense: values.expense,
     })
   }
 
